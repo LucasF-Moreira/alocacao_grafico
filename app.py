@@ -30,23 +30,80 @@ if arquivo:
     data_fim = pd.to_datetime(col4.date_input("Data fim"))
 
     # -----------------------------
+    # MAPA DE ETAPAS
+    # -----------------------------
+    etapas_map = {
+        "Inscrição": {
+            "inicio": "Inicio_Inscrições",
+            "fim": "Termino_Inscrições",
+            "pct_head": "Consultor_Head_Inscricao_PCT",
+            "pct_analista": "Analista_Inscricao_PCT"
+        },
+        "Planejamento": {
+            "inicio": "Inicio_Planejamento",
+            "fim": "Fim_Planejamento",
+            "pct_head": "Consultor_Head_Planejamento_PCT",
+            "pct_analista": "Analista_Planejamento_PCT"
+        },
+        "Etapa 1": {
+            "inicio": "Data_Inicio_Etapa1",
+            "fim": "Data_Termino_Etapa1",
+            "pct_head": "Consultor_Head_Etapa_1_PCT",
+            "pct_analista": "Analista_Etapa_1_PCT"
+        },
+        "Etapa 2": {
+            "inicio": "Data_Inicio_Etapa2",
+            "fim": "Data_Termino_Etapa2",
+            "pct_head": "Consultor_Head_Etapa_2_PCT",
+            "pct_analista": "Analista_Etapa_2_PCT"
+        },
+        "Etapa 3": {
+            "inicio": "Data_Inicio_Etapa3",
+            "fim": "Data_Termino_Etapa3",
+            "pct_head": "Consultor_Head_Etapa_3_PCT",
+            "pct_analista": "Analista_Etapa_3_PCT"
+        },
+        "Relatório Final": {
+            "inicio": "Inicio_Relatorio_Final",
+            "fim": "Data_Termino_Relatorio_Final",
+            "pct_head": "Consultor_Head_Relatorio_Final_PCT",
+            "pct_analista": "Analista_Relatorio_Final_PCT"
+        }
+    }
+
+    # -----------------------------
+    # FILTRO DE ETAPAS
+    # -----------------------------
+    etapas_disponiveis = list(etapas_map.keys())
+    etapas_sel = st.multiselect(
+        "Selecione as etapas",
+        ["Selecionar todas"] + etapas_disponiveis,
+        default=["Selecionar todas"]
+    )
+    if "Selecionar todas" not in etapas_sel:
+        etapas_filtradas = etapas_sel
+    else:
+        etapas_filtradas = etapas_disponiveis
+
+    # -----------------------------
     # PREPARAÇÃO DOS DADOS
     # -----------------------------
-    etapas = [1, 2, 3]
     registros = []
     for _, row in df.iterrows():
-        for etapa in etapas:
-            ini = row.get(f"Data_Inicio_Etapa{etapa}")
-            fim = row.get(f"Data_Termino_Etapa{etapa}")
+        for etapa, colunas in etapas_map.items():
+            if etapa not in etapas_filtradas:
+                continue  # pula etapas não selecionadas
+            ini = row.get(colunas["inicio"])
+            fim = row.get(colunas["fim"])
             if pd.notna(ini) and pd.notna(fim):
-                consultor = row.get(f"Consultor_Head_Etapa_{etapa}_PCT", 0)
-                analista = row.get(f"Analista_Etapa_{etapa}_PCT", 0)
+                consultor = row.get(colunas["pct_head"], 0)
+                analista = row.get(colunas["pct_analista"], 0)
 
                 if pd.notna(row.get("Head_1")):
                     registros.append({
                         "Pessoa": row["Head_1"],
                         "Processo": row["Nome_Programa"],
-                        "Etapa": f"Etapa {etapa}",
+                        "Etapa": etapa,
                         "Data_Inicio": ini,
                         "Data_Fim": fim,
                         "Pct": consultor,
@@ -56,7 +113,7 @@ if arquivo:
                     registros.append({
                         "Pessoa": row["Analista_1"],
                         "Processo": row["Nome_Programa"],
-                        "Etapa": f"Etapa {etapa}",
+                        "Etapa": etapa,
                         "Data_Inicio": ini,
                         "Data_Fim": fim,
                         "Pct": analista,
@@ -118,17 +175,22 @@ if arquivo:
     # CORES
     # -----------------------------
     def cor_por_etapa(etapa):
-        if "1" in str(etapa):
+        if "Inscrição" in etapa:
             return "#90CAF9"
-        elif "2" in str(etapa):
+        elif "Planejamento" in etapa:
             return "#A5D6A7"
-        elif "3" in str(etapa):
+        elif "1" in etapa:
             return "#FFF59D"
+        elif "2" in etapa:
+            return "#FFCC80"
+        elif "3" in etapa:
+            return "#F48FB1"
+        elif "Relatório" in etapa:
+            return "#CE93D8"
         else:
             return "#E0E0E0"
 
     df_f["Cor"] = df_f["Etapa"].apply(cor_por_etapa)
-    # agora mantemos o percentual completo, multiplicado por 100
     df_f["CorPct"] = df_f.apply(
         lambda x: f"{x['Cor']}|{x['Pct']*100:.2f}" if pd.notna(x['Pct']) else f"{x['Cor']}|",
         axis=1
@@ -138,7 +200,9 @@ if arquivo:
     # FILTRO DE PESSOA
     # -----------------------------
     pessoas_unicas = sorted(df_f["Pessoa"].unique())
-    pessoas_sel = st.multiselect("Selecione pessoas", ["Selecionar todos"] + pessoas_unicas, default=["Selecionar todos"])
+    pessoas_sel = st.multiselect(
+        "Selecione pessoas", ["Selecionar todos"] + pessoas_unicas, default=["Selecionar todos"]
+    )
     if "Selecionar todos" not in pessoas_sel:
         df_f = df_f[df_f["Pessoa"].isin(pessoas_sel)]
 
@@ -286,4 +350,5 @@ if arquivo:
         file_name="Gantt_Alocacao.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
