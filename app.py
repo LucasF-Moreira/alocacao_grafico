@@ -207,7 +207,7 @@ if arquivo:
         df_f = df_f[df_f["Pessoa"].isin(pessoas_sel)]
 
     # -----------------------------
-    # PIVOT ORDENADO COM AGREGACAO AUTOMATICA DE COLUNAS REMOVIDAS
+    # PIVOT ORDENADO COM AGREGAÇÃO AUTOMÁTICA DE COLUNAS REMOVIDAS
     # -----------------------------
     pivot = df_f.pivot_table(
         index=["Pessoa", "Processo", "Etapa"],
@@ -217,8 +217,23 @@ if arquivo:
         fill_value="#FFFFFF|"
     ).reset_index()
 
-    # Garante que somente colunas existentes sejam usadas
+    # 🔹 CORREÇÃO: Ordena as datas corretamente
     data_cols_existentes = [c for c in pivot.columns if c not in ["Pessoa", "Processo", "Etapa"]]
+
+    def parse_data_label(label):
+        try:
+            if "ª" in label:  # formato quinzenal
+                mes_ano, quinzena = label.split(" - ")
+                mes, ano = mes_ano.split("/")
+                quinzena_num = 1 if "1ª" in quinzena else 2
+                return pd.to_datetime(f"01-{mes}-{ano}") + pd.Timedelta(days=(quinzena_num - 1) * 15)
+            else:  # formato diário
+                return pd.to_datetime(label, format="%d/%b", errors="coerce").replace(year=pd.Timestamp.now().year)
+        except Exception:
+            return pd.NaT
+
+    data_cols_existentes = sorted(data_cols_existentes, key=parse_data_label)
+
     ordered_cols = ["Pessoa", "Processo", "Etapa"] + data_cols_existentes
     pivot = pivot[ordered_cols]
 
@@ -342,5 +357,6 @@ if arquivo:
         file_name="Gantt_Alocacao.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
 
 
